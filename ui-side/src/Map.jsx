@@ -6,19 +6,9 @@ const Map = () =>{
       const map = tt.map ({
         key: "",
         container: 'map',
-        center: [28.0473, -26.2041],
+        center: [0, 0],
         zoom:14,
-        style: {
-
-            map: '2/basic_street-light-driving',
-       
-            poi: '2/poi_light',
-       
-            trafficIncidents: '2/incidents_light',
-       
-            trafficFlow: '2/flow_relative-light'
-       
-       }
+        style: 'tomtom://vectoir/1/basic'
       });
       return () => map.remove();
     }, []);
