@@ -3,94 +3,133 @@
 import React, { createRef } from "react";
 import tt from "@tomtom-international/web-sdk-maps";
 import { services } from "@tomtom-international/web-sdk-services";
+import SearchBox from "./Map";
 
 import "./App.css";
 
-const API_KEY = import.meta.env.VITE_TOMTOM_API_KEY; // Ensure you have this in your .env file
-const SAN_FRANCISCO = [-122.4194, 37.7749];
+const API_KEY = import.meta.env.VITE_TOMTOM_API_KEY;
 
 class App extends React.Component {
   constructor(props) {
     super(props);
 
     this.mapElement = createRef();
+    this.liveLocationMarker = null;
 
     this.state = {
       markers: [],
+      currentLocation: null,
+      routeInfo: null,
     };
   }
 
   componentDidMount() {
+    this.initMap();
+  }
+
+  initMap = () => {
     this.map = tt.map({
       key: API_KEY,
       container: this.mapElement.current,
-      center: SAN_FRANCISCO,
-      zoom: 12,
-      style: {
-        map: "2/basic_street-light-driving",
-        poi: "2/poi_light",
-        trafficIncidents: "2/incidents_light",
-        trafficFlow: "2/flow_relative-light",
-      },
+      center: [0, 0], // Default center, will be updated later
+      zoom: 22,
     });
 
-    this.map.on("click", this.addMarker);
-  }
+    this.map.addControl(new tt.NavigationControl());
 
-  componentWillUnmount() {
-    this.map.remove();
-  }
+    this.map.on("click", this.handleMapClick);
 
-  addMarker = (event) => {
+    // Start tracking live location
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          this.setState({ currentLocation: [longitude, latitude] }, () => {
+            if (!this.liveLocationMarker) {
+              this.liveLocationMarker = new tt.Marker()
+                .setLngLat([longitude, latitude])
+                .addTo(this.map);
+            } else {
+              this.liveLocationMarker.setLngLat([longitude, latitude]);
+            }
+          });
+        },
+        (error) => {
+          console.error("Error getting live location:", error);
+        }
+      );
+    } else {
+      console.error("Geolocation is not supported by this browser.");
+    }
+  };
+
+  handleMapClick = (event) => {
+    this.addMarkerAtLngLat(event.lngLat);
+  };
+
+  addMarkerAtLngLat = (lngLat) => {
     const { markers } = this.state;
 
-    if (markers.length < 2) {
-      const marker = new tt.Marker().setLngLat(event.lngLat).addTo(this.map);
+    if (markers.length < 10) {
+      const marker = new tt.Marker().setLngLat(lngLat).addTo(this.map);
       this.setState({ markers: [...markers, marker] });
     }
   };
 
-  route = () => {
-    const { markers } = this.state;
+  calculateRoute = async () => {
+    const { markers, currentLocation } = this.state;
 
-    if (markers.length < 2) return;
+    if (markers.length < 2 || !currentLocation) return;
 
     const key = API_KEY;
-    const locations = markers.map((marker) => marker.getLngLat());
+    const locations = [currentLocation, ...markers.map((marker) => marker.getLngLat())];
 
-    this.calculateRoute("green", {
-      key,
-      locations,
-    });
-
-    this.calculateRoute("red", {
-      key,
-      locations,
-      travelMode: "truck",
-      vehicleLoadType: "otherHazmatExplosive",
-      vehicleWeight: 8000,
-    });
-  };
-
-  calculateRoute = async (color, routeOptions) => {
     try {
-      const response = await services.calculateRoute(routeOptions);
-      const geojson = response.toGeoJson();
+      const response = await services.calculateRoute({
+        key,
+        locations,
+      });
+
+      const route = response.routes[0];
+      const routeInfo = {
+        distance: route.summary.lengthInMeters,
+        arrivalTime: new Date(Date.now() + route.summary.travelTimeInSeconds * 1000),
+      };
+
+      this.setState({ routeInfo });
+
+      this.map.removeLayer("route"); // Remove existing route layer if present
 
       this.map.addLayer({
-        id: color,
+        id: "route",
         type: "line",
         source: {
           type: "geojson",
-          data: geojson,
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: route.geometry,
+          },
+        },
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
         },
         paint: {
-          "line-color": color,
-          "line-width": 6,
+          "line-color": "#07f",
+          "line-width": 8,
         },
       });
+
+      const bounds = new tt.LngLatBounds();
+
+      locations.forEach((location) => {
+        bounds.extend(location);
+      });
+
+      this.map.fitBounds(bounds, { padding: 100 });
     } catch (error) {
-      console.error(error);
+      console.error("Error calculating route:", error);
     }
   };
 
@@ -98,29 +137,29 @@ class App extends React.Component {
     const { markers } = this.state;
 
     markers.forEach((marker) => marker.remove());
-    this.setState({ markers: [] });
-
-    this.removeRoute("green");
-    this.removeRoute("red");
-  };
-
-  removeRoute = (id) => {
-    if (this.map.getLayer(id)) {
-      this.map.removeLayer(id);
-      this.map.removeSource(id);
-    }
+    this.setState({ markers: [], routeInfo: null });
+    this.map.removeLayer("route");
   };
 
   render() {
+    const { routeInfo } = this.state;
+
     return (
       <div className="App">
+        <SearchBox onPlaceSelect={this.addMarkerAtLngLat} />
         <div ref={this.mapElement} className="mapDiv"></div>
         <button className="clearButton" onClick={this.clear}>
           Clear
         </button>
-        <button className="routeButton" onClick={this.route}>
-          Route
+        <button className="routeButton" onClick={this.calculateRoute}>
+          Start Navigation
         </button>
+        {routeInfo && (
+          <div className="routeInfo">
+            <p>Remaining Distance: {routeInfo.distance} meters</p>
+            <p>Arrival Time: {routeInfo.arrivalTime.toLocaleString()}</p>
+          </div>
+        )}
       </div>
     );
   }

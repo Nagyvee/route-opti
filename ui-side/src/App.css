@@ -1,20 +1,23 @@
 /* App.css */
 
 .mapDiv {
-  width: 100vw;
-  height: 75vh;
+  width: 80vw;
+  height: 60vh; /* Reduce the height of the map to make space for other elements */
+  position: relative; /* Ensure buttons and search box are positioned correctly */
 }
 
 .clearButton, .routeButton {
   position: absolute;
   top: 10px;
-  left: 10px;
-  margin-right: 10px;
-  z-index: 1; /* Ensures buttons are above the map */
-  padding: 10px;
+  z-index: 2; /* Ensures buttons are above the map */
+  padding: 10px 20px; /* Increase padding for better visibility */
   background-color: #fff;
-  border: none;
+  width: 200px;
+  height: 50px;
+  border: 1px solid #ccc; /* Add a border for better visibility */
+  border-radius: 5px; /* Rounded corners for buttons */
   cursor: pointer;
+  font-size: 16px; /* Increase font size */
 }
 
 .clearButton {
@@ -22,5 +25,49 @@
 }
 
 .routeButton {
-  left: 90px;
+  left: 140px; /* Adjust left position to provide space between buttons */
+}
+
+.search-box {
+  position: absolute;
+  top: 10px;
+  width: 50%;
+  height: 100px;
+  right: 10px;
+  z-index: 2; /* Ensures the search box is above the map */
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px; /* Rounded corners for input */
+  padding: 10px; /* Add padding for better spacing */
+}
+
+.search-box input {
+  width: 80%; /* Set a fixed width for the search input */
+  padding: 10px;
+  height: 100%;
+  font-size: 50px; /* Increase font size */
+  border: 1px solid #ccc;
+  border-radius: 5px; /* Rounded corners for input */
+}
+
+.suggestions-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-top: none; /* Remove border between input and suggestions */
+  border-radius: 0 0 5px 5px; /* Rounded corners for suggestions box */
+  max-height: 150px; /* Set a max height and scroll for overflow */
+  overflow-y: auto;
+}
+
+.suggestions-list li {
+  padding: 10px;
+  cursor: pointer;
+  font-size: 16px; /* Increase font size */
+}
+
+.suggestions-list li:hover {
+  background-color: #eee;
 }
