@@ -1,5 +1,3 @@
-// App.jsx
-
 import React, { createRef } from "react";
 import tt from "@tomtom-international/web-sdk-maps";
 import { services } from "@tomtom-international/web-sdk-services";
@@ -20,6 +18,7 @@ class App extends React.Component {
       markers: [],
       currentLocation: null,
       routeInfo: null,
+      googleMapsUrl: null,
     };
   }
 
@@ -32,7 +31,7 @@ class App extends React.Component {
       key: API_KEY,
       container: this.mapElement.current,
       center: [0, 0], // Default center, will be updated later
-      zoom: 22,
+      zoom: 14,
     });
 
     this.map.addControl(new tt.NavigationControl());
@@ -96,7 +95,9 @@ class App extends React.Component {
         arrivalTime: new Date(Date.now() + route.summary.travelTimeInSeconds * 1000),
       };
 
-      this.setState({ routeInfo });
+      const googleMapsUrl = this.createGoogleMapsUrl(locations);
+
+      this.setState({ routeInfo, googleMapsUrl });
 
       this.map.removeLayer("route"); // Remove existing route layer if present
 
@@ -133,16 +134,26 @@ class App extends React.Component {
     }
   };
 
+  createGoogleMapsUrl = (locations) => {
+    const baseUrl = 'https://www.google.com/maps/dir/?api=1';
+    const origin = `&origin=${locations[0][1]},${locations[0][0]}`;
+    const destination = `&destination=${locations[locations.length - 1][1]},${locations[locations.length - 1][0]}`;
+    const waypoints = locations.slice(1, -1).map(coord => `${coord[1]},${coord[0]}`).join('|');
+    const waypointsParam = waypoints ? `&waypoints=${waypoints}` : '';
+
+    return `${baseUrl}${origin}${destination}${waypointsParam}`;
+  };
+
   clear = () => {
     const { markers } = this.state;
 
     markers.forEach((marker) => marker.remove());
-    this.setState({ markers: [], routeInfo: null });
+    this.setState({ markers: [], routeInfo: null, googleMapsUrl: null });
     this.map.removeLayer("route");
   };
 
   render() {
-    const { routeInfo } = this.state;
+    const { routeInfo, googleMapsUrl } = this.state;
 
     return (
       <div className="App">
@@ -152,8 +163,13 @@ class App extends React.Component {
           Clear
         </button>
         <button className="routeButton" onClick={this.calculateRoute}>
-          Start Navigation
+          Calculate Route
         </button>
+        {googleMapsUrl && (
+          <button className="navigateButton" onClick={() => window.open(googleMapsUrl, '_blank')}>
+            Navigate with Google Maps
+          </button>
+        )}
         {routeInfo && (
           <div className="routeInfo">
             <p>Remaining Distance: {routeInfo.distance} meters</p>
