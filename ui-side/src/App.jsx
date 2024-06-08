@@ -1,6 +1,7 @@
 import React, { createRef } from "react";
 import tt from "@tomtom-international/web-sdk-maps";
 import { services } from "@tomtom-international/web-sdk-services";
+import '@tomtom-international/web-sdk-maps/dist/maps.css'; 
 import SearchBox from "./Map";
 
 import "./App.css";
